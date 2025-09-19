@@ -1,587 +1,808 @@
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VIKI — лиды из Telegram на автопилоте</title>
-  <meta name="description" content="VIKI находит аудиторию по ключевым словам, заводит диалог, заносит лидов в CRM и доводит до оплаты — без рекламы и без ручной переписки." />
-  <link rel="icon" href="assets/favicon.png" sizes="any" type="image/png">
+import React, { useMemo, useState } from "react";
 
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+// Single-file, self-contained UI mock for VIKI user interface.
+// Тема обновлена под лендинг: тёмный фон + неоновые акценты (бирюзовый/голубой/фиолетовый).
+// Меню — отдельный левый блок; рабочая зона «Интерфейс пользователя VIKI» — правый блок.
 
-  <style>
-    /* ====== Design tokens ====== */
-    :root{
-      --bg:#0d1324; --ink:#E6E9EF; --muted:#A9B3C6;
-      --teal:#2dd4bf; --violet:#a78bfa; --stroke:#26304a;
-      --card:#121a33; --card2:#0f172a; --brand:#91a4ff;
-      --btn-ink:#0b1020; --radius:18px;
-      --grad:linear-gradient(135deg,var(--teal),var(--violet));
-      --shadow:0 10px 30px rgba(0,0,0,.28), 0 1px 0 rgba(255,255,255,.02) inset;
-    }
+// ————————————————————————————————————————————————————————————
+// Helper mini-components
+function Icon({ name, className = "w-5 h-5" }) {
+  const stroke = "currentColor";
+  const common = { fill: "none", stroke, strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round" };
+  switch (name) {
+    case "logo":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M4 12a8 8 0 1016 0A8 8 0 104 12z" />
+          <path d="M8 12h8M12 8v8" />
+        </svg>
+      );
+    case "project":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M3 7h18M7 3h10M5 7v12a2 2 0 002 2h10a2 2 0 002-2V7" />
+        </svg>
+      );
+    case "agent":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M12 14a5 5 0 100-10 5 5 0 000 10z" />
+          <path d="M4 21a8 8 0 0116 0" />
+        </svg>
+      );
+    case "kb":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M4 5h12a4 4 0 014 4v10H8a4 4 0 01-4-4V5z" />
+          <path d="M8 5v10a4 4 0 004 4" />
+        </svg>
+      );
+    case "contacts":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M7 8h10M7 12h8M7 16h6" />
+          <path d="M4 4h16v16H4z" />
+        </svg>
+      );
+    case "funnel":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M3 4h18l-6 7v6l-6 3V11L3 4z" />
+        </svg>
+      );
+    case "chat":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M21 12a8 8 0 11-3.2-6.4L21 5l-.6 3.2A7.96 7.96 0 0121 12z" />
+          <path d="M7 17l-3 3 .8-4.2" />
+        </svg>
+      );
+    case "crm":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M4 6h16M4 12h10M4 18h7" />
+          <path d="M16 11l4 4-4 4" />
+        </svg>
+      );
+    case "analytics":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M4 20h16M7 10v7M12 7v10M17 13v4" />
+        </svg>
+      );
+    case "autopilot":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M12 3l3 6 6 .9-4.5 4.4 1 6.4L12 18l-5.5 2.7 1-6.4L3 9.9 9 9l3-6z" />
+        </svg>
+      );
+    case "settings":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <path d="M12 8a4 4 0 100 8 4 4 0 000-8z" />
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V22a2 2 0 01-4 0v-.11a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.11c.66 0 1.26-.39 1.51-1z" />
+        </svg>
+      );
+    case "play":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}><path d="M8 5l11 7-11 7V5z"/></svg>
+      );
+    case "pause":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}><path d="M8 5h3v14H8zM13 5h3v14h-3z"/></svg>
+      );
+    case "check":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}><path d="M5 13l4 4L19 7"/></svg>
+      );
+    case "warning":
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+      );
+    default:
+      return null;
+  }
+}
 
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);
-      background:
-        radial-gradient(1200px 800px at 10% -10%, #1d2546 0, transparent 50%),
-        radial-gradient(1000px 700px at 110% -20%, #1a2b52 0, transparent 50%),
-        var(--bg);
-      overflow-x:hidden;
-    }
-    a{color:inherit;text-decoration:none}
-    img{max-width:100%;display:block}
-    .container{width:100%;max-width:1160px;margin:0 auto;padding:0 20px}
+function Badge({ children, color = "slate" }) {
+  const map = {
+    slate: "bg-slate-800/60 text-slate-200 border-slate-700",
+    green: "bg-emerald-500/15 text-emerald-300 border-emerald-400/20",
+    yellow: "bg-amber-500/15 text-amber-300 border-amber-400/20",
+    red: "bg-rose-500/15 text-rose-300 border-rose-400/20",
+    blue: "bg-sky-500/15 text-sky-300 border-sky-400/20",
+    violet: "bg-violet-500/15 text-violet-300 border-violet-400/20",
+  };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${map[color]}`}>
+      {children}
+    </span>
+  );
+}
 
-    /* ====== Buttons (unified) ====== */
-    .btn{display:inline-flex;align-items:center;gap:.6rem;background:var(--grad);color:var(--btn-ink);
-      padding:.95rem 1.15rem;border-radius:12px;font-weight:800;box-shadow:0 10px 30px rgba(98,115,255,.25);
-      transition:transform .15s ease, box-shadow .2s ease; white-space:nowrap}
-    .btn:hover{transform:translateY(-1px);box-shadow:0 18px 40px rgba(98,115,255,.28)}
-    .btn.secondary{background:transparent;border:1px solid var(--stroke);color:var(--ink);box-shadow:none}
-    .btn.pulse{animation:pulse 2.6s ease-in-out infinite}
-    @keyframes pulse{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-1px) scale(1.02)}}
-
-    .micro{font-size:.85rem;color:var(--muted)}
-
-    /* ====== Header ====== */
-    header{position:sticky;top:0;z-index:50;background:rgba(13,19,36,.6);backdrop-filter:blur(10px);
-      border-bottom:1px solid rgba(255,255,255,.06)}
-    .nav{display:flex;justify-content:space-between;align-items:center;padding:10px 0}
-    .brand{display:flex;align-items:center;gap:.6rem;font-weight:900;letter-spacing:.2px}
-    .brand picture{display:inline-flex}
-    .brand img{height:36px;width:auto;filter:drop-shadow(0 8px 18px rgba(167,139,250,.18))}
-    .menu{display:flex;align-items:center;gap:14px}
-    .menu a{color:var(--muted);font-weight:600;padding:8px 10px;border-radius:10px}
-    .menu a:hover{color:var(--ink);background:rgba(255,255,255,.04)}
-    .nav-right{display:flex;align-items:center;gap:10px}
-    .menu-toggle{display:none;background:transparent;border:1px solid var(--stroke);border-radius:12px;padding:8px 10px;color:var(--ink)}
-    @media (max-width:860px){
-      .menu{display:none;position:absolute;left:0;right:0;top:60px;padding:14px 20px;flex-direction:column;gap:8px;
-            background:rgba(10,14,28,.98);border-bottom:1px solid rgba(255,255,255,.08)}
-      .menu.open{display:flex}
-      .menu-toggle{display:inline-flex}
-    }
-
-    /* Language switcher */
-    .lang-switch{display:flex;gap:6px;border:1px solid var(--stroke);border-radius:999px;padding:4px;background:rgba(255,255,255,.03)}
-    .lang-switch button{border:0;background:transparent;color:var(--muted);padding:6px 10px;border-radius:999px;font-weight:800;cursor:pointer}
-    .lang-switch button.active{background:var(--grad);color:var(--btn-ink)}
-
-    /* ====== Hero ====== */
-    .hero{padding:64px 0 28px;position:relative}
-    .halo{position:absolute;inset:-40% -20% auto -20%;height:80vh;filter:blur(40px);opacity:.6;pointer-events:none;
-      background:
-        radial-gradient(closest-side, rgba(45,212,191,.18), transparent),
-        radial-gradient(closest-side, rgba(167,139,250,.18), transparent);}
-    .hero h1{font-size: clamp(28px, 7vw, 54px);line-height:1.06;margin:0 0 16px;font-weight:900}
-    .hero p.lead{font-size: clamp(16px, 2.3vw, 20px);color:var(--muted);max-width:880px;margin:0}
-    .hero-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:22px}
-    .value-card{margin-top:22px;border:1px solid var(--stroke);border-radius:16px;padding:14px;background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015))}
-    .value-list{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-    .value{display:flex;gap:.7rem;align-items:flex-start}
-    .value i{font-style:normal;filter:drop-shadow(0 10px 22px rgba(45,212,191,.18))}
-    .value b{display:block}
-    @media (max-width:900px){.value-list{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:520px){.value-list{grid-template-columns:1fr}}
-
-    /* ====== Social proof ====== */
-    .proof{padding:38px 0 18px}
-    .logos{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
-    .logo-pill{display:flex;align-items:center;justify-content:center;min-width:120px;height:38px;
-      border:1px solid var(--stroke);border-radius:999px;background:rgba(255,255,255,.02);font-weight:700;color:#cbd5e1}
-    .case-card{display:grid;grid-template-columns:1fr .9fr;gap:16px;margin-top:16px}
-    .case{border:1px solid var(--stroke);border-radius:16px;padding:18px;background:linear-gradient(180deg, rgba(45,212,191,.08), rgba(167,139,250,.05))}
-    .mockshot{border:1px dashed var(--stroke);border-radius:14px;min-height:180px;background:
-      repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 10px, transparent 10px 20px);}
-    @media (max-width:880px){.case-card{grid-template-columns:1fr}}
-
-    /* ====== How it works ====== */
-    section{padding:56px 0;border-top:1px solid rgba(255,255,255,.06)}
-    h2{font-size: clamp(22px, 3.2vw, 36px);margin:0 0 10px;font-weight:900}
-    .grid{display:grid;gap:14px}
-    .steps{grid-template-columns:repeat(5,minmax(0,1fr))}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));border:1px solid var(--stroke);
-      border-radius:16px;padding:18px;box-shadow:var(--shadow)}
-    .step strong{display:flex;gap:.6rem;align-items:center}
-    .step .small{color:var(--muted)}
-    @media (max-width:980px){.steps{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:560px){.steps{grid-template-columns:1fr}}
-
-    /* ====== Benefits ====== */
-    .benefits{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .benefit h3{margin:.2rem 0 .2rem;font-size:18px}
-    .benefit p{margin:0;color:var(--muted)}
-    @media (max-width:980px){.benefits{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:600px){.benefits{grid-template-columns:1fr}}
-
-    /* ====== Demo offer + mini form ====== */
-    .demo{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
-    .form{background:linear-gradient(180deg, rgba(98,115,255,.08), rgba(98,115,255,.03));}
-    .field{display:flex;flex-direction:column;gap:6px}
-    .field label{font-size:.9rem;color:var(--muted)}
-    .field input{background:#0c1226;border:1px solid var(--stroke);border-radius:12px;padding:.9rem 1rem;color:var(--ink);outline:none}
-    .field input:focus{border-color:#5b6cff;box-shadow:0 0 0 3px rgba(91,108,255,.25)}
-    .form .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    @media (max-width:760px){.demo{grid-template-columns:1fr}.form .row{grid-template-columns:1fr}}
-
-    /* ====== Gallery ====== */
-    .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-    .shot{border:1px solid var(--stroke);border-radius:14px;min-height:160px;background:
-      linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
-      display:flex;align-items:center;justify-content:center;color:#9fb0d0;font-weight:700}
-    @media (max-width:880px){.gallery{grid-template-columns:repeat(2,1fr)}}
-    @media (max-width:560px){.gallery{grid-template-columns:1fr}}
-
-    /* ====== FAQ ====== */
-    .faq-item{border:1px solid var(--stroke);border-radius:14px;padding:14px;background:rgba(255,255,255,.02)}
-    .faq-q{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;font-weight:700}
-    .faq-a{max-height:0;overflow:hidden;transition:max-height .25s ease}
-    .faq-item.open .faq-a{max-height:260px}
-
-    /* ====== Footer ====== */
-    footer{padding:40px 0;color:#9fb0d0;font-size:.92rem}
-    .divider{height:1px;background:linear-gradient(90deg, transparent, rgba(255,255,255,.1), transparent);margin:22px 0}
-
-    /* Reduced motion */
-    @media (prefers-reduced-motion: reduce){.btn.pulse{animation:none}}
-  </style>
-</head>
-<body>
-  <!-- ====== Header ====== -->
-  <header>
-    <div class="container nav">
-      <a href="#top" class="brand" aria-label="VIKI home">
-        <picture>
-          <source srcset="assets/viki-logo.webp" type="image/webp">
-          <img src="assets/viki-logo.png" alt="VIKI logo" height="36" width="160" decoding="async">
-        </picture>
-      </a>
-
-      <button class="menu-toggle" id="menuToggle" aria-label="Меню">☰</button>
-
-      <nav class="menu" id="mainMenu" aria-label="Primary">
-        <a href="#proof" data-i18n="m.proof">Соцдоказательство</a>
-        <a href="#how" data-i18n="m.how">Как работает</a>
-        <a href="#benefits" data-i18n="m.benefits">Выгоды</a>
-        <a href="#demo" data-i18n="m.demo">Демо</a>
-        <a href="#cases" data-i18n="m.cases">Кейсы</a>
-        <a href="#faq" data-i18n="m.faq">FAQ</a>
-      </nav>
-
-      <div class="nav-right">
-        <div class="lang-switch" role="group" aria-label="Language">
-          <button type="button" data-lang="ru" class="active">RU</button>
-          <button type="button" data-lang="en">EN</button>
+function Card({ title, subtitle, right, children, className = "" }) {
+  return (
+    <div className={`rounded-2xl border border-slate-800 bg-slate-900/70 shadow-none ${className}`}>
+      {(title || right) && (
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+          </div>
+          <div className="flex items-center gap-2">{right}</div>
         </div>
-        <a href="https://t.me/VIKI_SUPPORT" target="_blank" rel="noopener" class="btn pulse" data-i18n="cta.primary">🚀 Запустить демо и получить первых лидов</a>
-      </div>
+      )}
+      <div className={title ? "p-4" : "p-4"}>{children}</div>
     </div>
-  </header>
+  );
+}
 
-  <!-- ====== Hero ====== -->
-  <main id="top">
-    <section class="hero">
-      <div class="halo"></div>
-      <div class="container">
-        <h1 data-i18n="hero.title">Получайте лидов из Telegram на автопилоте</h1>
-        <p class="lead" data-i18n="hero.lead">
-          VIKI находит аудиторию по ключевым словам, заводит диалог, заносит лидов в CRM и доводит до оплаты — без рекламы и без ручной переписки.
-        </p>
+function Button({ children, onClick, variant = "primary", size = "md", className = "", disabled }) {
+  const v = {
+    primary: "bg-indigo-500 text-white hover:bg-indigo-400",
+    ghost: "bg-transparent text-slate-200 hover:bg-slate-800",
+    outline: "bg-transparent text-slate-100 border border-slate-700 hover:bg-slate-800",
+    danger: "bg-rose-600 text-white hover:bg-rose-500",
+    success: "bg-emerald-600 text-white hover:bg-emerald-500",
+  };
+  const s = { sm: "px-3 py-1.5 text-sm rounded-xl", md: "px-3.5 py-2 text-sm rounded-xl", lg: "px-4 py-2.5 text-base rounded-2xl" };
+  return (
+    <button onClick={onClick} disabled={disabled} className={`${v[variant]} ${s[size]} transition-colors ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`}>
+      {children}
+    </button>
+  );
+}
 
-        <div class="hero-cta">
-          <a class="btn" href="https://t.me/VIKI_SUPPORT" target="_blank" rel="noopener" data-i18n="cta.primary">🚀 Запустить демо и получить первых лидов</a>
-          <a class="btn secondary" href="#how" data-i18n="cta.secondary">👀 Посмотреть, как это работает (1 мин.)</a>
-        </div>
-        <div class="micro" data-i18n="micro.risk">Без предоплаты. 7 дней теста.</div>
+function Toggle({ checked, onChange }) {
+  return (
+    <button onClick={() => onChange(!checked)} className={`w-11 h-6 rounded-full transition-all ${checked ? "bg-emerald-500" : "bg-slate-600"} relative`}>
+      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-all ${checked ? "translate-x-5" : ""}`} />
+    </button>
+  );
+}
 
-        <div class="value-card">
-          <div class="value-list">
-            <div class="value"><i>⚡</i><div><b data-i18n="value.v1.t">Лиды сегодня</b><div class="micro" data-i18n="value.v1.d">первые контакты в день запуска</div></div></div>
-            <div class="value"><i>💸</i><div><b data-i18n="value.v2.t">0 ₽ на рекламу</b><div class="micro" data-i18n="value.v2.d">органический поиск в Telegram</div></div></div>
-            <div class="value"><i>🤖</i><div><b data-i18n="value.v3.t">Автопилот</b><div class="micro" data-i18n="value.v3.d">AI переписка, CRM, follow-up</div></div></div>
-            <div class="value"><i>📊</i><div><b data-i18n="value.v4.t">Прозрачная аналитика</b><div class="micro" data-i18n="value.v4.d">путь лида до оплаты</div></div></div>
-          </div>
-        </div>
+function Field({ label, hint, children, required }) {
+  return (
+    <label className="block">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-200">{label}{required && <span className="text-rose-400">*</span>}</span>
+        {hint && <span className="text-xs text-slate-500">{hint}</span>}
       </div>
-    </section>
+      <div className="mt-1.5">{children}</div>
+    </label>
+  );
+}
 
-    <!-- ====== Social proof ====== -->
-    <section id="proof" class="proof">
-      <div class="container">
-        <div class="micro" style="margin-bottom:8px" data-i18n="proof.usedby">Используют VIKI</div>
-        <div class="logos" aria-label="Client logos">
-          <div class="logo-pill">LOGO A</div>
-          <div class="logo-pill">LOGO B</div>
-          <div class="logo-pill">LOGO C</div>
-          <div class="logo-pill">LOGO D</div>
-          <div class="logo-pill">LOGO E</div>
-        </div>
+// ————————————————————————————————————————————————————————————
+// Mock data
+const MOCK_AGENTS = [
+  { id: "agent_001", username: "@promo_agent_01", status: "active", warm: 0.91, geo: "KZ", messagesToday: 437, flood: false },
+  { id: "agent_002", username: "@promo_agent_02", status: "cooldown", warm: 0.72, geo: "RU", messagesToday: 188, flood: true },
+  { id: "agent_003", username: "@sales_maria", status: "paused", warm: 0.83, geo: "TR", messagesToday: 0, flood: false },
+];
 
-        <div class="case-card">
-          <div class="case">
-            <h3 style="margin:0 0 8px" data-i18n="proof.case.title">1000 клиентов без рекламного бюджета — отчёт внутри</h3>
-            <p class="micro" data-i18n="proof.case.desc">Те же механики, что предложим вам: ключи → агенты → диалоги → CRM → оплата.</p>
-            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
-              <a class="btn" href="https://t.me/VIKI_SUPPORT" target="_blank" rel="noopener" data-i18n="cta.primary">🚀 Запустить демо и получить первых лидов</a>
-              <a class="btn secondary" href="#cases" data-i18n="proof.case.btn">Открыть кейс</a>
-            </div>
-            <div class="micro" style="margin-top:10px" data-i18n="proof.guarantee">Демо без предоплаты. Если за 7 дней не покажем лидов — ни к чему не обязаны.</div>
-          </div>
-          <div class="mockshot" aria-label="Case screenshot placeholder"></div>
-        </div>
-      </div>
-    </section>
+const MOCK_CONTACT_BASES = [
+  { id: "base_main", name: "Активная база: Лиды Май", size: 18240, status: "active" },
+  { id: "base_webinar", name: "Вебинар Апрель (архив)", size: 5320, status: "archived" },
+];
 
-    <!-- ====== How it works (5 steps) ====== -->
-    <section id="how">
-      <div class="container">
-        <h2 data-i18n="how.title">Как это работает</h2>
-        <div class="grid steps">
-          <div class="card step">
-            <strong>1 — <span data-i18n="how.s1.t">Описание</span></strong>
-            <div class="small" data-i18n="how.s1.d">Вы описываете продукт и целевую аудиторию.</div>
-          </div>
-          <div class="card step">
-            <strong>2 — <span data-i18n="how.s2.t">Ключи</span></strong>
-            <div class="small" data-i18n="how.s2.d">VIKI подбирает ключи и находит сообщества/диалоги.</div>
-          </div>
-          <div class="card step">
-            <strong>3 — <span data-i18n="how.s3.t">Агенты</span></strong>
-            <div class="small" data-i18n="how.s3.d">Запускаем «агентов» и начинаем переписку.</div>
-          </div>
-          <div class="card step">
-            <strong>4 — <span data-i18n="how.s4.t">CRM</span></strong>
-            <div class="small" data-i18n="how.s4.d">Лиды автоматически падают в CRM/таблицу.</div>
-          </div>
-          <div class="card step">
-            <strong>5 — <span data-i18n="how.s5.t">Оптимизация</span></strong>
-            <div class="small" data-i18n="how.s5.d">AI докручивает тексты — конверсия растёт.</div>
-          </div>
-        </div>
-        <div style="margin-top:16px">
-          <a class="btn" href="https://t.me/VIKI_SUPPORT" target="_blank" rel="noopener" data-i18n="how.btn">Посмотреть сценарий для моего продукта</a>
-        </div>
-      </div>
-    </section>
+const MOCK_PROJECTS = [
+  {
+    id: "proj_001",
+    name: "Продажа кухонь",
+    status: "active",
+    agentIds: ["agent_001"],
+    funnelId: "funnel_kitchen",
+    kbId: "kb_main",
+    activeContactBaseId: "base_main",
+    autoOptimize: false,
+    kpi: { conv: 0.064, reply: 0.41, ctr: 0.23 },
+  },
+  {
+    id: "proj_002",
+    name: "Рекрутинг курьеров",
+    status: "paused",
+    agentIds: ["agent_002"],
+    funnelId: "funnel_hr",
+    kbId: "kb_hr",
+    activeContactBaseId: "base_main",
+    autoOptimize: true,
+    kpi: { conv: 0.028, reply: 0.36, ctr: 0.19 },
+  },
+];
 
-    <!-- ====== Benefits ====== -->
-    <section id="benefits">
-      <div class="container">
-        <h2 data-i18n="benefits.title">Польза для бизнеса</h2>
-        <div class="grid benefits">
-          <div class="card benefit">
-            <h3 data-i18n="benefits.b1.t">Экономим время</h3>
-            <p data-i18n="benefits.b1.d">VIKI сама ищет и пишет — вы обрабатываете только тёплых.</p>
-          </div>
-          <div class="card benefit">
-            <h3 data-i18n="benefits.b2.t">Больше диалогов</h3>
-            <p data-i18n="benefits.b2.d">Сотни касаний ежедневно без роста штата.</p>
-          </div>
-          <div class="card benefit">
-            <h3 data-i18n="benefits.b3.t">Безопасно</h3>
-            <p data-i18n="benefits.b3.d">Антибан-ядро, лимиты и прокси под Telegram.</p>
-          </div>
-          <div class="card benefit">
-            <h3 data-i18n="benefits.b4.t">Честная аналитика</h3>
-            <p data-i18n="benefits.b4.d">Видно, что сработало и где проседаем.</p>
-          </div>
-          <div class="card benefit">
-            <h3 data-i18n="benefits.b5.t">Без рекламных расходов</h3>
-            <p data-i18n="benefits.b5.d">Органический канал без бюджета на трафик.</p>
-          </div>
-          <div class="card benefit">
-            <h3 data-i18n="benefits.b6.t">Самообучение</h3>
-            <p data-i18n="benefits.b6.d">Тексты и CTA улучшаются каждую неделю.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ====== Demo offer ====== -->
-    <section id="demo">
-      <div class="container">
-        <h2 data-i18n="demo.title">Что входит в демо?</h2>
-        <div class="demo">
-          <div class="card">
-            <ul style="margin:0 0 12px 20px;color:var(--muted)">
-              <li data-i18n="demo.l1">Подбор ключей и сбор аудитории.</li>
-              <li data-i18n="demo.l2">Запуск 1–2 сценариев переписки.</li>
-              <li data-i18n="demo.l3">7 дней, ежедневный отчёт по лидам.</li>
-              <li data-i18n="demo.l4">Итог: список диалогов, стоимость контакта, рекомендации.</li>
-            </ul>
-            <a class="btn" href="https://t.me/VIKI_SUPPORT" target="_blank" rel="noopener" data-i18n="cta.primary">🚀 Запустить демо и получить первых лидов</a>
-            <div class="micro" style="margin-top:8px" data-i18n="micro.risk">Без предоплаты. 7 дней теста.</div>
-            <div class="divider"></div>
-            <div class="micro" data-i18n="demo.microcta">Микро-CTA: «Получить список ключей для моей ниши»</div>
-          </div>
-
-          <form class="card form" id="leadForm" novalidate>
-            <div class="row">
-              <div class="field">
-                <label for="name" data-i18n="form.name">Имя</label>
-                <input id="name" name="name" autocomplete="name" placeholder="Алексей" />
+// ————————————————————————————————————————————————————————————
+// Views (без изменения логики; обновлены только классы под тёмную тему)
+function ProjectsView({ projects, onOpenWizard, onToggleProject, onOpenProject }) {
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <Card title="Проекты" subtitle="Централизованное управление сущностями и запуском" right={<Button onClick={onOpenWizard}>+ Новый проект</Button>} className="xl:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {projects.map((p) => (
+            <div key={p.id} className="rounded-xl border border-slate-800 p-3 hover:bg-slate-900 transition" onClick={() => onOpenProject(p)}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icon name="project" />
+                  <div>
+                    <div className="font-medium text-slate-100">{p.name}</div>
+                    <div className="text-xs text-slate-400">Funnel: <span className="font-mono text-slate-300">{p.funnelId}</span></div>
+                  </div>
+                </div>
+                <Badge color={p.status === "active" ? "green" : p.status === "paused" ? "yellow" : "slate"}>{p.status}</Badge>
               </div>
-              <div class="field">
-                <label for="tg" data-i18n="form.tg">Telegram @</label>
-                <input id="tg" name="tg" placeholder="@username" />
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg bg-slate-800 py-2">
+                  <div className="text-xs text-slate-400">Reply</div>
+                  <div className="font-semibold text-slate-100">{Math.round(p.kpi.reply * 100)}%</div>
+                </div>
+                <div className="rounded-lg bg-slate-800 py-2">
+                  <div className="text-xs text-slate-400">CTR</div>
+                  <div className="font-semibold text-slate-100">{Math.round(p.kpi.ctr * 100)}%</div>
+                </div>
+                <div className="rounded-lg bg-slate-800 py-2">
+                  <div className="text-xs text-slate-400">Conv</div>
+                  <div className="font-semibold text-slate-100">{(p.kpi.conv * 100).toFixed(1)}%</div>
+                </div>
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <div className="text-xs text-slate-400">Активная база: <span className="font-mono text-slate-300">{p.activeContactBaseId}</span></div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); onToggleProject(p); }}>{p.status === "active" ? "Пауза" : "Запустить"}</Button>
+                  <Button size="sm" onClick={(e) => { e.stopPropagation(); onOpenProject(p); }}>Открыть</Button>
+                </div>
               </div>
             </div>
-            <div class="field" style="margin-top:10px">
-              <label for="niche" data-i18n="form.niche">Ниша/продукт</label>
-              <input id="niche" name="niche" placeholder="Например: онлайн-школа английского" />
+          ))}
+        </div>
+      </Card>
+      <Card title="Статусы и уведомления" subtitle="Системные события и алерты">
+        <ul className="space-y-2 text-sm text-slate-200">
+          <li className="flex items-start gap-2"><Icon name="check" className="w-4 h-4 text-emerald-400 mt-0.5"/>Все сервисы работают штатно</li>
+          <li className="flex items-start gap-2"><Icon name="warning" className="w-4 h-4 text-amber-400 mt-0.5"/>У агента @promo_agent_02 FloodWait — включён cooldown</li>
+          <li className="flex items-start gap-2"><Icon name="warning" className="w-4 h-4 text-amber-400 mt-0.5"/>Попытка подключить вторую активную базу — отклонено политикой</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+function AgentsView({ agents }) {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <Card title="Агенты" subtitle="Живые Telegram-аккаунты, предоставленные системой" className="lg:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {agents.map((a) => (
+            <div key={a.id} className="border border-slate-800 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2"><Icon name="agent"/><div>
+                  <div className="font-medium text-slate-100">{a.username}</div>
+                  <div className="text-xs text-slate-400">Geo: {a.geo} • Warm: {(a.warm*100).toFixed(0)}%</div>
+                </div></div>
+                <Badge color={a.status === "active" ? "green" : a.status === "cooldown" ? "yellow" : "slate"}>{a.status}</Badge>
+              </div>
+              <div className="mt-3 flex items-center justify-between text-sm text-slate-300">
+                <div>Сегодня отправлено: <span className="font-semibold text-slate-100">{a.messagesToday}</span></div>
+                <div>Flood: <Badge color={a.flood ? "red" : "green"}>{a.flood ? "yes" : "no"}</Badge></div>
+              </div>
+              <div className="mt-3 h-2 rounded bg-slate-800 overflow-hidden"><div className={`h-full ${a.flood ? "bg-amber-400" : "bg-emerald-500"}`} style={{ width: `${Math.min(100, a.messagesToday/10)}%` }} /></div>
             </div>
-            <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-              <button type="submit" class="btn" data-i18n="form.send">🚀 Отправить и открыть Telegram</button>
-              <a class="btn secondary" href="https://t.me/VIKI_SUPPORT" target="_blank" rel="noopener" data-i18n="cta.primary">🚀 Запустить демо и получить первых лидов</a>
+          ))}
+        </div>
+      </Card>
+      <Card title="Политики безопасности" subtitle="Антибан, лимиты, ротации">
+        <ul className="space-y-2 text-sm list-disc pl-4 text-slate-300">
+          <li>Редактирование username и аватара недоступно вручную</li>
+          <li>Лимиты отправок и задержки регулируются системой</li>
+          <li>Автоматическая замена на fallback-агента при блокировке</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+function KnowledgeView() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <Card title="База знаний" subtitle="FAQ, OffFunnel ответы, термины" className="lg:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {["Оплата","Доставка","Техподдержка","Политики"].map((c) => (
+            <div key={c} className="border rounded-xl p-3 border-slate-800 hover:bg-slate-900">
+              <div className="font-medium text-slate-100">{c}</div>
+              <p className="text-sm text-slate-400 mt-1">AI отвечает на вопросы вне воронки. Добавьте правила, ответы, источники.</p>
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" variant="outline">Правила</Button>
+                <Button size="sm">Тест</Button>
+              </div>
             </div>
-            <div class="micro" style="margin-top:6px" data-i18n="form.note">Оставьте @Telegram — пришлём список ключей сегодня.</div>
-          </form>
+          ))}
         </div>
-      </div>
-    </section>
+      </Card>
+      <Card title="Граф знаний" subtitle="Сущности и связи">
+        <div className="aspect-video rounded-xl bg-gradient-to-br from-indigo-950 via-slate-900 to-violet-900 grid place-content-center text-slate-400 text-sm">
+          Визуализация связей (mock)
+        </div>
+      </Card>
+    </div>
+  );
+}
 
-    <!-- ====== Cases / screenshots ====== -->
-    <section id="cases">
-      <div class="container">
-        <h2 data-i18n="cases.title">Как выглядят реальные диалоги</h2>
-        <p class="micro" style="margin:0 0 10px" data-i18n="cases.note">Скрин-галерея: первое касание → квалификация → передача в CRM.</p>
-        <div class="gallery">
-          <div class="shot">CHAT 1</div>
-          <div class="shot">CHAT 2</div>
-          <div class="shot">CHAT 3</div>
-          <div class="shot">CHAT 4</div>
-          <div class="shot">CHAT 5</div>
-          <div class="shot">CHAT 6</div>
+function ContactsView({ contactBases, onReplaceActive }) {
+  const active = contactBases.find((b) => b.status === "active");
+  const archived = contactBases.filter((b) => b.status !== "active");
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <Card title="Контактная база" subtitle="В проекте разрешена только одна активная база" className="xl:col-span-2"
+        right={<Badge color="blue">Правило: 1 активная база</Badge>}>
+        <div className="rounded-xl border border-slate-800 p-3 bg-slate-900">
+          <div className="flex items-center justify-between">
+            <div className="font-medium text-slate-100">{active?.name}</div>
+            <Badge color="green">active</Badge>
+          </div>
+          <div className="mt-1 text-sm text-slate-400">Контактов: {active?.size.toLocaleString("ru-RU")}</div>
+          <div className="mt-2 flex gap-2">
+            <Button size="sm">Импорт</Button>
+            <Button size="sm" variant="outline">Очистка</Button>
+            <Button size="sm" variant="outline">Валидация</Button>
+          </div>
         </div>
-        <div style="margin-top:16px">
-          <a class="btn" href="https://t.me/VIKI_SUPPORT" target="_blank" rel="noopener" data-i18n="cta.primary">🚀 Запустить демо и получить первых лидов</a>
+        <div className="mt-4">
+          <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">Архив</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {archived.map((b) => (
+              <div key={b.id} className="border rounded-xl p-3 border-slate-800">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium text-slate-100">{b.name}</div>
+                  <Badge>{b.status}</Badge>
+                </div>
+                <div className="text-sm text-slate-400 mt-1">Контактов: {b.size.toLocaleString("ru-RU")}</div>
+                <div className="mt-2"><Button size="sm" variant="outline" onClick={() => onReplaceActive(b)}>Сделать активной</Button></div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
+      </Card>
+      <Card title="KeywordAI / Parser" subtitle="Поиск и парсинг аудитории">
+        <div className="space-y-2 text-sm">
+          <input className="w-full border rounded-xl px-3 py-2 bg-slate-900 border-slate-700 text-slate-100 placeholder-slate-500" placeholder="Ключевые слова по нише"/>
+          <div className="flex gap-2">
+            <Button size="sm">Сгенерировать ключи</Button>
+            <Button size="sm" variant="outline">Запустить парсинг</Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
-    <!-- ====== FAQ ====== -->
-    <section id="faq">
-      <div class="container">
-        <h2>FAQ</h2>
-        <div class="grid" style="grid-template-columns:1fr 1fr">
-          <div class="faq-item">
-            <div class="faq-q"><span data-i18n="faq.q1">Это не спам?</span><span>＋</span></div>
-            <div class="faq-a"><p class="micro" data-i18n="faq.a1">Нет. VIKI пишет как живой менеджер, соблюдая лимиты и правила Telegram.</p></div>
-          </div>
-          <div class="faq-item">
-            <div class="faq-q"><span data-i18n="faq.q2">Нужна ли CRM?</span><span>＋</span></div>
-            <div class="faq-a"><p class="micro" data-i18n="faq.a2">Не обязательно — отдадим в таблицу/CSV или подключим вашу CRM.</p></div>
-          </div>
-          <div class="faq-item">
-            <div class="faq-q"><span data-i18n="faq.q3">Сколько аккаунтов нужно?</span><span>＋</span></div>
-            <div class="faq-a"><p class="micro" data-i18n="faq.a3">Подбираем под риски ниши; при блоке — авто-замена.</p></div>
-          </div>
-          <div class="faq-item">
-            <div class="faq-q"><span data-i18n="faq.q4">Когда будут первые лиды?</span><span>＋</span></div>
-            <div class="faq-a"><p class="micro" data-i18n="faq.a4">Обычно в течение 24–72 часов после запуска.</p></div>
-          </div>
-          <div class="faq-item">
-            <div class="faq-q"><span data-i18n="faq.q5">Сколько это стоит?</span><span>＋</span></div>
-            <div class="faq-a"><p class="micro" data-i18n="faq.a5">Есть демо и тарифы «по лидам» — обсудим на созвоне.</p></div>
-          </div>
+function FunnelsView() {
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <Card title="Воронка продаж" subtitle="Шаги, тексты, CTA" className="xl:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {["Приветствие","Квалификация","Оффер","CTA"].map((step, idx) => (
+            <div key={step} className="border rounded-xl p-3 border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="font-medium text-slate-100">{idx+1}. {step}</div>
+                <Badge color={idx===2?"yellow":"slate"}>{idx===2?"низкая конверсия":"ok"}</Badge>
+              </div>
+              <textarea className="mt-2 w-full border rounded-lg px-2 py-1 text-sm bg-slate-900 border-slate-700 text-slate-100 placeholder-slate-500" rows={4} defaultValue={`Текст шага "${step}"...`} />
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" variant="outline">A/B вариант</Button>
+                <Button size="sm">AI-рекомендация</Button>
+              </div>
+            </div>
+          ))}
         </div>
-        <div style="margin-top:16px">
-          <a class="btn" href="https://t.me/VIKI_SUPPORT" target="_blank" rel="noopener" data-i18n="cta.primary">🚀 Запустить демо и получить первых лидов</a>
+      </Card>
+      <Card title="Карта воронки" subtitle="Funnel Map">
+        <div className="aspect-video rounded-xl bg-gradient-to-br from-indigo-950 via-slate-900 to-violet-900 grid place-content-center text-slate-400 text-sm">
+          Интерактивная схема (mock)
         </div>
-      </div>
-    </section>
-  </main>
+      </Card>
+    </div>
+  );
+}
 
-  <!-- ====== Footer ====== -->
-  <footer>
-    <div class="container">
-      <div class="divider"></div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between">
-        <a href="#top" class="brand" aria-label="VIKI home">
-          <picture>
-            <source srcset="assets/viki-logo.webp" type="image/webp">
-            <img src="assets/viki-logo.png" alt="VIKI logo small" style="height:28px" loading="lazy" decoding="async">
-          </picture>
-        </a>
-        <div class="micro" data-i18n="footer.copy">© 2025 VIKI Platform. Все права защищены.</div>
+function DialoguesView() {
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <Card title="Диалоги" subtitle="Реальные переписки и статусы" className="xl:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {[1,2,3,4].map((i) => (
+            <div key={i} className="border rounded-xl p-3 border-slate-800">
+              <div className="flex items-center justify-between">
+                <div className="font-medium text-slate-100">@user{i}</div>
+                <Badge color={i%2?"green":"yellow"}>{i%2?"в работе":"ожидание"}</Badge>
+              </div>
+              <div className="mt-2 text-sm text-slate-300 h-20 overflow-auto">Последние сообщения… AI ведёт диалог в рамках воронки, фиксирует интенты и реакции.</div>
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" variant="outline">Открыть</Button>
+                <Button size="sm">Ответить</Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card title="Runtime" subtitle="Исполнение сценариев">
+        <ul className="space-y-2 text-sm text-slate-300">
+          <li>Активные диалоги: <b className="text-slate-100">128</b></li>
+          <li>Среднее время ответа: <b className="text-slate-100">1м 42с</b></li>
+          <li>В очереди: <b className="text-slate-100">23</b></li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+function CRMView() {
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <Card title="Лиды" subtitle="Стадии, задачи, звонки" className="xl:col-span-2">
+        <div className="overflow-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-slate-400"><th className="py-2">Лид</th><th>Стадия</th><th>Ответств.</th><th>След.действие</th><th className="text-right">Вероятность</th></tr></thead>
+            <tbody>
+              {[
+                { name: "Иван П.", stage: "Переговоры", owner:"Мария", next:"Звонок", prob: 0.62 },
+                { name: "ООО Альфа", stage: "Оффер", owner:"VIKI", next:"Прайс", prob: 0.48 },
+                { name: "Сергей К.", stage: "Квалификация", owner:"Дмитрий", next:"Бриф", prob: 0.31 },
+              ].map((l)=> (
+                <tr key={l.name} className="border-t border-slate-800 text-slate-200">
+                  <td className="py-2">{l.name}</td>
+                  <td><Badge color="blue">{l.stage}</Badge></td>
+                  <td>{l.owner}</td>
+                  <td>{l.next}</td>
+                  <td className="text-right font-semibold">{Math.round(l.prob*100)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+      <Card title="Календарь" subtitle="Ближайшие задачи">
+        <ul className="text-sm space-y-2 text-slate-300">
+          <li><b className="text-slate-100">10:00</b> — Звонок Ивану П.</li>
+          <li><b className="text-slate-100">13:30</b> — Демо показ</li>
+          <li><b className="text-slate-100">16:00</b> — Подтверждение оплаты</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+function AnalyticsView({ projects }) {
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <Card title="KPI" subtitle="Сводные показатели" className="xl:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {projects.slice(0,2).map((p)=> (
+            <div key={p.id} className="border rounded-xl p-3 border-slate-800">
+              <div className="font-medium text-slate-100">{p.name}</div>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg bg-slate-800 py-2"><div className="text-xs text-slate-400">Reply</div><div className="font-semibold text-slate-100">{Math.round(p.kpi.reply*100)}%</div></div>
+                <div className="rounded-lg bg-slate-800 py-2"><div className="text-xs text-slate-400">CTR</div><div className="font-semibold text-slate-100">{Math.round(p.kpi.ctr*100)}%</div></div>
+                <div className="rounded-lg bg-slate-800 py-2"><div className="text-xs text-slate-400">Conv</div><div className="font-semibold text-slate-100">{(p.kpi.conv*100).toFixed(1)}%</div></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card title="A/B и рекомендации" subtitle="AI улучшения">
+        <ul className="text-sm space-y-2 list-disc pl-4 text-slate-300">
+          <li>Шаг 3 «Оффер»: заменить CTA, усилить выгоды</li>
+          <li>Тон сообщений: мягче в первом касании</li>
+          <li>Время отправки: смещение на 11:00–13:00</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+function AutopilotView({ enabled, onToggle }) {
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <Card title="AI-Автопилот" subtitle="Автоматическое управление коммуникациями" right={<Toggle checked={enabled} onChange={onToggle}/> } className="xl:col-span-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {["Рассылки","Оптимизация","Пояснения"].map((b, idx)=> (
+            <div key={b} className={`border rounded-xl p-3 ${enabled?"border-emerald-400/30 bg-emerald-500/10":"border-slate-800"}`}>
+              <div className="font-medium text-slate-100">{b}</div>
+              <p className="text-sm text-slate-400 mt-1">{idx===0?"Планирование и отправка в безопасных окнах": idx===1?"A/B, baseline и адаптация": "Explainability API — причины действий"}</p>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card title="Триггеры" subtitle="Trigger Registry">
+        <ul className="text-sm space-y-2 text-slate-300">
+          <li><Badge color="violet">Повторный контакт</Badge> — спустя 48ч без ответа</li>
+          <li><Badge color="violet">Новый лид</Badge> — мгновенное приветствие</li>
+          <li><Badge color="violet">Низкая конверсия</Badge> — включить вариант B</li>
+        </ul>
+      </Card>
+    </div>
+  );
+}
+
+function SettingsView() {
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+      <Card title="Доступ и роли" subtitle="RoleAccessGuard">
+        <ul className="text-sm space-y-2 text-slate-300">
+          <li>Администратор — полный доступ</li>
+          <li>Оператор — диалоги, CRM</li>
+          <li>Аналитик — отчёты, KPI</li>
+        </ul>
+      </Card>
+      <Card title="Тарифы и VC" subtitle="VIKICoin">
+        <div className="text-sm text-slate-300">Баланс: <b className="text-slate-100">2 500 VC</b></div>
+        <div className="mt-2 flex gap-2"><Button size="sm">Пополнить</Button><Button size="sm" variant="outline">История</Button></div>
+      </Card>
+      <Card title="Уведомления" subtitle="Notifier">
+        <div className="flex items-center justify-between text-sm text-slate-300"><span>Telegram-алерты</span><Toggle checked onChange={()=>{}}/></div>
+      </Card>
+    </div>
+  );
+}
+
+// ————————————————————————————————————————————————————————————
+// Project Wizard (только стили инпутов и фона)
+function ProjectWizard({ open, onClose, onCreate, agents, contactBases }) {
+  const [step, setStep] = useState(1);
+  const [name, setName] = useState("");
+  const [agentId, setAgentId] = useState(agents[0]?.id);
+  const [kb, setKb] = useState("kb_main");
+  const [funnel, setFunnel] = useState("funnel_new");
+  const [activeBaseId, setActiveBaseId] = useState(contactBases.find(b=>b.status==='active')?.id || "");
+  const [auto, setAuto] = useState(false);
+
+  if (!open) return null;
+
+  const canNext = () => {
+    if (step === 1) return name.trim().length >= 3;
+    if (step === 2) return !!agentId;
+    if (step === 3) return !!kb && !!funnel;
+    if (step === 4) return !!activeBaseId; // guard: exactly one active base
+    return true;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm grid place-items-center p-4 z-50">
+      <div className="w-full max-w-3xl bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-semibold text-slate-100">Новый проект</div>
+            <div className="text-xs text-slate-500">Шаг {step} из 5</div>
+          </div>
+          <Button variant="ghost" onClick={onClose}>Закрыть</Button>
+        </div>
+        <div className="p-5 space-y-4">
+          {step === 1 && (
+            <div className="space-y-3">
+              <Field label="Название проекта" required hint="Мин. 3 символа">
+                <input className="w-full border rounded-xl px-3 py-2 bg-slate-900 border-slate-700 text-slate-100 placeholder-slate-500" placeholder="Например, Продажа кухонь" value={name} onChange={(e)=>setName(e.target.value)} />
+              </Field>
+              <div className="text-xs text-slate-400">Проект объединяет: агенты, база знаний, воронка, <b>одна активная база контактов</b>, аналитика, автопилот.</div>
+            </div>
+          )}
+          {step === 2 && (
+            <div className="space-y-3">
+              <Field label="Агент" required>
+                <select className="w-full border rounded-xl px-3 py-2 bg-slate-900 border-slate-700 text-slate-100" value={agentId} onChange={(e)=>setAgentId(e.target.value)}>
+                  {agents.map((a)=> <option key={a.id} value={a.id}>{a.username} • {a.geo} • warm {Math.round(a.warm*100)}%</option>)}
+                </select>
+              </Field>
+              <div className="text-xs text-slate-500">Агенты предоставляются системой, проходят авторегистрацию и прогрев автоматически.</div>
+            </div>
+          )}
+          {step === 3 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="База знаний" required>
+                <select className="w-full border rounded-xl px-3 py-2 bg-slate-900 border-slate-700 text-slate-100" value={kb} onChange={(e)=>setKb(e.target.value)}>
+                  <option value="kb_main">kb_main</option>
+                  <option value="kb_hr">kb_hr</option>
+                  <option value="kb_support">kb_support</option>
+                </select>
+              </Field>
+              <Field label="Воронка" required>
+                <select className="w-full border rounded-xl px-3 py-2 bg-slate-900 border-slate-700 text-slate-100" value={funnel} onChange={(e)=>setFunnel(e.target.value)}>
+                  <option value="funnel_new">funnel_new</option>
+                  <option value="funnel_kitchen">funnel_kitchen</option>
+                  <option value="funnel_hr">funnel_hr</option>
+                </select>
+              </Field>
+            </div>
+          )}
+          {step === 4 && (
+            <div className="space-y-3">
+              <Field label="Активная база контактов" required hint="В проекте допускается только одна активная база">
+                <select className="w-full border rounded-xl px-3 py-2 bg-slate-900 border-slate-700 text-slate-100" value={activeBaseId} onChange={(e)=>setActiveBaseId(e.target.value)}>
+                  {contactBases.map((b)=> <option key={b.id} value={b.id} disabled={b.status!=="active" && true}>{b.name} {b.status!=="active"?"(архив)":""}</option>)}
+                </select>
+              </Field>
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-400/20 text-amber-200 text-sm">
+                <Icon name="warning" className="w-4 h-4"/> В проекте может быть <b>только одна активная</b> база. При замене текущая станет архивной.
+              </div>
+            </div>
+          )}
+          {step === 5 && (
+            <div className="space-y-3">
+              <Field label="Автопилот" hint="Можно включить позже в разделе Autopilot">
+                <div className="flex items-center justify-between border rounded-xl px-3 py-2 border-slate-700">
+                  <span className="text-slate-200">Включить AI-управление</span>
+                  <Toggle checked={auto} onChange={setAuto} />
+                </div>
+              </Field>
+              <div className="rounded-xl border border-slate-800 p-3 text-sm text-slate-300">
+                <div className="font-medium mb-1 text-slate-100">Проверка настроек</div>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Проект: <b className="text-slate-100">{name || "—"}</b></li>
+                  <li>Агент: <b className="text-slate-100">{agents.find(a=>a.id===agentId)?.username}</b></li>
+                  <li>KB / Funnel: <b className="text-slate-100">{kb}</b> / <b className="text-slate-100">{funnel}</b></li>
+                  <li>Активная база: <b className="text-slate-100">{activeBaseId}</b></li>
+                  <li>Автопилот: <b className="text-slate-100">{auto?"on":"off"}</b></li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="px-5 py-4 border-t border-slate-800 flex items-center justify-between bg-slate-900">
+          <div className="text-xs text-slate-500">Политики: Antiban • Throttle • Fallback • Audit</div>
+          <div className="flex items-center gap-2">
+            {step>1 && <Button variant="outline" onClick={()=>setStep(step-1)}>Назад</Button>}
+            {step<5 && <Button onClick={()=> canNext() && setStep(step+1)} disabled={!canNext()}>Далее</Button>}
+            {step===5 && <Button onClick={()=> onCreate({ name, agentId, kb, funnel, activeBaseId, auto })} disabled={!name}>Создать</Button>}
+          </div>
+        </div>
       </div>
     </div>
-  </footer>
+  );
+}
 
-  <script>
-    // ====== Mobile menu toggle
-    const toggle = document.getElementById('menuToggle');
-    const menu = document.getElementById('mainMenu');
-    toggle.addEventListener('click', () => menu.classList.toggle('open'));
+// ————————————————————————————————————————————————————————————
+// Root App — левый блок (меню) + правый блок (интерфейс)
+const NAV = [
+  { id: "projects", label: "Проекты", icon: "project" },
+  { id: "agents", label: "Агенты", icon: "agent" },
+  { id: "kb", label: "База знаний", icon: "kb" },
+  { id: "contacts", label: "Контакты", icon: "contacts" },
+  { id: "funnels", label: "Воронки", icon: "funnel" },
+  { id: "dialogues", label: "Диалоги", icon: "chat" },
+  { id: "crm", label: "CRM", icon: "crm" },
+  { id: "analytics", label: "Аналитика", icon: "analytics" },
+  { id: "autopilot", label: "Автопилот", icon: "autopilot" },
+  { id: "settings", label: "Настройки", icon: "settings" },
+];
 
-    // ====== FAQ accordion
-    document.querySelectorAll('.faq-item .faq-q').forEach(q=>{
-      q.addEventListener('click', ()=>{
-        q.parentElement.classList.toggle('open');
-      });
-    });
+export default function VIKIUserApp() {
+  const [tab, setTab] = useState("projects");
+  const [projects, setProjects] = useState(MOCK_PROJECTS);
+  const [agents] = useState(MOCK_AGENTS);
+  const [contactBases, setContactBases] = useState(MOCK_CONTACT_BASES);
+  const [wizard, setWizard] = useState(false);
+  const [autopilot, setAutopilot] = useState(true);
+  const currentProject = useMemo(()=> projects[0], [projects]);
 
-    // ====== Lead form → open Telegram with prefilled text (no backend friction)
-    document.getElementById('leadForm')?.addEventListener('submit', (e)=>{
-      e.preventDefault();
-      const name = (document.getElementById('name')?.value||'').trim();
-      const tg = (document.getElementById('tg')?.value||'').trim();
-      const niche = (document.getElementById('niche')?.value||'').trim();
-      const msg = encodeURIComponent(`Здравствуйте! Хочу демо VIKI.\nИмя: ${name}\nTelegram: ${tg}\nНиша: ${niche}`);
-      // fallback: просто откроем чат. (Можно заменить на deep-link с текстом, если используете бота)
-      window.open('https://t.me/VIKI_SUPPORT', '_blank', 'noopener');
-    });
+  function handleReplaceActive(base) {
+    setContactBases((prev)=> prev.map((b)=> ({ ...b, status: b.id === base.id ? "active" : (b.status === "active" ? "archived" : b.status) })));
+  }
 
-    // ====== i18n dictionary
-    const I18N = {
-      ru: {
-        "m.proof":"Соцдоказательство","m.how":"Как работает","m.benefits":"Выгоды","m.demo":"Демо","m.cases":"Кейсы","m.faq":"FAQ",
-        "cta.primary":"🚀 Запустить демо и получить первых лидов",
-        "cta.secondary":"👀 Посмотреть, как это работает (1 мин.)",
-        "micro.risk":"Без предоплаты. 7 дней теста.",
-        "hero.title":"Получайте лидов из Telegram на автопилоте",
-        "hero.lead":"VIKI находит аудиторию по ключевым словам, заводит диалог, заносит лидов в CRM и доводит до оплаты — без рекламы и без ручной переписки.",
-        "value.v1.t":"Лиды сегодня","value.v1.d":"первые контакты в день запуска",
-        "value.v2.t":"0 ₽ на рекламу","value.v2.d":"органический поиск в Telegram",
-        "value.v3.t":"Автопилот","value.v3.d":"AI переписка, CRM, follow-up",
-        "value.v4.t":"Прозрачная аналитика","value.v4.d":"путь лида до оплаты",
-        "proof.usedby":"Используют VIKI",
-        "proof.case.title":"1000 клиентов без рекламного бюджета — отчёт внутри",
-        "proof.case.desc":"Те же механики, что предложим вам: ключи → агенты → диалоги → CRM → оплата.",
-        "proof.case.btn":"Открыть кейс",
-        "proof.guarantee":"Демо без предоплаты. Если за 7 дней не покажем лидов — ни к чему не обязаны.",
-        "how.title":"Как это работает",
-        "how.s1.t":"Описание","how.s1.d":"Вы описываете продукт и целевую аудиторию.",
-        "how.s2.t":"Ключи","how.s2.d":"VIKI подбирает ключи и находит сообщества/диалоги.",
-        "how.s3.t":"Агенты","how.s3.d":"Запускаем «агентов» и начинаем переписку.",
-        "how.s4.t":"CRM","how.s4.d":"Лиды автоматически падают в CRM/таблицу.",
-        "how.s5.t":"Оптимизация","how.s5.d":"AI докручивает тексты — конверсия растёт.",
-        "how.btn":"Посмотреть сценарий для моего продукта",
-        "benefits.title":"Польза для бизнеса",
-        "benefits.b1.t":"Экономим время","benefits.b1.d":"VIKI сама ищет и пишет — вы обрабатываете только тёплых.",
-        "benefits.b2.t":"Больше диалогов","benefits.b2.d":"Сотни касаний ежедневно без роста штата.",
-        "benefits.b3.t":"Безопасно","benefits.b3.d":"Антибан-ядро, лимиты и прокси под Telegram.",
-        "benefits.b4.t":"Честная аналитика","benefits.b4.d":"Видно, что сработало и где проседаем.",
-        "benefits.b5.t":"Без рекламных расходов","benefits.b5.d":"Органический канал без бюджета на трафик.",
-        "benefits.b6.t":"Самообучение","benefits.b6.d":"Тексты и CTA улучшаются каждую неделю.",
-        "demo.title":"Что входит в демо?",
-        "demo.l1":"Подбор ключей и сбор аудитории.",
-        "demo.l2":"Запуск 1–2 сценариев переписки.",
-        "demo.l3":"7 дней, ежедневный отчёт по лидам.",
-        "demo.l4":"Итог: список диалогов, стоимость контакта, рекомендации.",
-        "demo.microcta":"Микро-CTA: «Получить список ключей для моей ниши»",
-        "form.name":"Имя","form.tg":"Telegram @","form.niche":"Ниша/продукт","form.send":"🚀 Отправить и открыть Telegram",
-        "cases.title":"Как выглядят реальные диалоги","cases.note":"Скрин-галерея: первое касание → квалификация → передача в CRM.",
-        "faq.q1":"Это не спам?","faq.a1":"Нет. VIKI пишет как живой менеджер, соблюдая лимиты и правила Telegram.",
-        "faq.q2":"Нужна ли CRM?","faq.a2":"Не обязательно — отдадим в таблицу/CSV или подключим вашу CRM.",
-        "faq.q3":"Сколько аккаунтов нужно?","faq.a3":"Подбираем под риски ниши; при блоке — авто-замена.",
-        "faq.q4":"Когда будут первые лиды?","faq.a4":"Обычно в течение 24–72 часов после запуска.",
-        "faq.q5":"Сколько это стоит?","faq.a5":"Есть демо и тарифы «по лидам» — обсудим на созвоне.",
-        "footer.copy":"© 2025 VIKI Platform. Все права защищены."
-      },
-      en: {
-        "m.proof":"Social proof","m.how":"How it works","m.benefits":"Benefits","m.demo":"Demo","m.cases":"Cases","m.faq":"FAQ",
-        "cta.primary":"🚀 Launch demo and get first leads",
-        "cta.secondary":"👀 See how it works (1 min.)",
-        "micro.risk":"No prepayment. 7-day trial.",
-        "hero.title":"Get Telegram leads on autopilot",
-        "hero.lead":"VIKI finds audiences by keywords, starts dialogues, logs leads in CRM and drives them to payment — no ads and no manual texting.",
-        "value.v1.t":"Leads today","value.v1.d":"first contacts on day one",
-        "value.v2.t":"0 ad spend","value.v2.d":"organic Telegram discovery",
-        "value.v3.t":"Autopilot","value.v3.d":"AI chats, CRM, follow-ups",
-        "value.v4.t":"Transparent analytics","value.v4.d":"lead path to payment",
-        "proof.usedby":"Used by VIKI clients",
-        "proof.case.title":"1,000 clients with zero ad budget — full report",
-        "proof.case.desc":"Same mechanics we’ll run for you: keywords → agents → chats → CRM → payment.",
-        "proof.case.btn":"Open case",
-        "proof.guarantee":"Demo with no prepayment. If we don’t show leads in 7 days — you owe nothing.",
-        "how.title":"How it works",
-        "how.s1.t":"Brief","how.s1.d":"You describe the product and target audience.",
-        "how.s2.t":"Keywords","how.s2.d":"VIKI selects queries and finds groups/dialogues.",
-        "how.s3.t":"Agents","how.s3.d":"We launch agents and start conversations.",
-        "how.s4.t":"CRM","how.s4.d":"Leads land in CRM/spreadsheet automatically.",
-        "how.s5.t":"Optimization","how.s5.d":"AI improves copy — conversion grows.",
-        "how.btn":"See a flow for my product",
-        "benefits.title":"Business benefits",
-        "benefits.b1.t":"Save time","benefits.b1.d":"VIKI searches & writes — you handle only warm leads.",
-        "benefits.b2.t":"More dialogues","benefits.b2.d":"Hundreds of touches daily without new headcount.",
-        "benefits.b3.t":"Safe","benefits.b3.d":"Anti-ban core, limits and proxies for Telegram.",
-        "benefits.b4.t":"Honest analytics","benefits.b4.d":"See what works and where we drop.",
-        "benefits.b5.t":"No ad budget","benefits.b5.d":"An organic channel by design.",
-        "benefits.b6.t":"Self-learning","benefits.b6.d":"Copy and CTAs improve weekly.",
-        "demo.title":"What’s included in the demo?",
-        "demo.l1":"Keywords selection and audience collection.",
-        "demo.l2":"Launch 1–2 chat scenarios.",
-        "demo.l3":"7 days, daily lead report.",
-        "demo.l4":"Deliverables: dialogues list, CPL, recommendations.",
-        "demo.microcta":"Micro-CTA: “Get a keyword list for my niche”",
-        "form.name":"Name","form.tg":"Telegram @","form.niche":"Niche/product","form.send":"🚀 Send and open Telegram",
-        "cases.title":"What real chats look like","cases.note":"Gallery: first touch → qualification → CRM handoff.",
-        "faq.q1":"Is it spam?","faq.a1":"No. VIKI writes like a human agent, respecting Telegram rules and limits.",
-        "faq.q2":"Do I need a CRM?","faq.a2":"Not required — we can export to CSV or connect your CRM.",
-        "faq.q3":"How many accounts?","faq.a3":"We size for your niche’s risk; auto-replacement on blocks.",
-        "faq.q4":"How fast are the first leads?","faq.a4":"Usually within 24–72 hours of launch.",
-        "faq.q5":"How much does it cost?","faq.a5":"There’s a demo and pay-per-lead plans — let’s discuss.",
-        "footer.copy":"© 2025 VIKI Platform. All rights reserved."
-      }
-    };
+  function handleCreateProject(data) {
+    setProjects((prev)=> ([...prev, {
+      id: `proj_${String(prev.length+1).padStart(3,'0')}`,
+      name: data.name,
+      status: "active",
+      agentIds: [data.agentId],
+      funnelId: data.funnel,
+      kbId: data.kb,
+      activeContactBaseId: data.activeBaseId,
+      autoOptimize: data.auto,
+      kpi: { conv: 0.0, reply: 0.0, ctr: 0.0 },
+    }]));
+    setWizard(false);
+    setTab("projects");
+  }
 
-    // ====== Language handling
-    const langButtons = document.querySelectorAll('.lang-switch button');
-    function applyLang(lang){
-      const dict = I18N[lang] || I18N.ru;
-      document.documentElement.lang = lang;
-      document.querySelectorAll('[data-i18n]').forEach(el=>{
-        const key = el.getAttribute('data-i18n');
-        if(dict[key] !== undefined) el.textContent = dict[key];
-      });
-      // For elements where HTML is desired — none in this version; left as pattern:
-      document.querySelectorAll('[data-i18n-html]').forEach(el=>{
-        const key = el.getAttribute('data-i18n-html');
-        if(dict[key] !== undefined) el.innerHTML = dict[key];
-      });
-      langButtons.forEach(b=>b.classList.toggle('active', b.dataset.lang===lang));
-      localStorage.setItem('viki_lang', lang);
+  function handleToggleProject(p) {
+    setProjects((prev)=> prev.map((x)=> x.id===p.id ? { ...x, status: x.status === "active" ? "paused" : "active" } : x));
+  }
+
+  function Content() {
+    switch (tab) {
+      case "projects":
+        return <ProjectsView projects={projects} onOpenWizard={()=>setWizard(true)} onToggleProject={handleToggleProject} onOpenProject={()=>{}}/>;
+      case "agents":
+        return <AgentsView agents={agents}/>;
+      case "kb":
+        return <KnowledgeView/>;
+      case "contacts":
+        return <ContactsView contactBases={contactBases} onReplaceActive={handleReplaceActive}/>;
+      case "funnels":
+        return <FunnelsView/>;
+      case "dialogues":
+        return <DialoguesView/>;
+      case "crm":
+        return <CRMView/>;
+      case "analytics":
+        return <AnalyticsView projects={projects}/>;
+      case "autopilot":
+        return <AutopilotView enabled={autopilot} onToggle={setAutopilot}/>;
+      case "settings":
+        return <SettingsView/>;
+      default:
+        return null;
     }
-    langButtons.forEach(b=>b.addEventListener('click', ()=>applyLang(b.dataset.lang)));
+  }
 
-    // IP-based language detection with timeout + fallback
-    async function detectLangByIP(timeoutMs=1200){
-      const CIS = new Set(["RU","BY","KZ","KG","UA","UZ","AM","AZ","GE","MD","TJ","TM"]);
-      const ctl = new AbortController();
-      const t = setTimeout(()=>ctl.abort("timeout"), timeoutMs);
-      try{
-        const r = await fetch('https://ipwho.is/?lang=en', {signal: ctl.signal});
-        const j = await r.json();
-        clearTimeout(t);
-        if(j && j.success && j.country_code){
-          return CIS.has(j.country_code) ? 'ru' : 'en';
-        }
-      }catch(e){ /* ignore and fallback */ }
-      finally{ clearTimeout(t); }
-      const lang = (navigator.language || 'ru').slice(0,2).toLowerCase();
-      return lang==='en' ? 'en' : 'ru';
-    }
+  return (
+    <div className="min-h-screen text-slate-100 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800">
+      {/* Top bar */}
+      <header className="sticky top-0 z-40 bg-slate-950/70 backdrop-blur border-b border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-2xl bg-indigo-600 grid place-content-center text-white shadow-lg shadow-indigo-600/30"><Icon name="logo" className="w-4 h-4"/></div>
+            <div>
+              <div className="font-semibold">VIKI</div>
+              <div className="text-xs text-slate-400">Telegram-native AI Platform</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm">Помощь</Button>
+            <Button size="sm">Создать проект</Button>
+          </div>
+        </div>
+      </header>
 
-    (async ()=>{
-      const saved = localStorage.getItem('viki_lang');
-      if(saved){ applyLang(saved); }
-      else{ applyLang(await detectLangByIP()); }
-    })();
+      {/* Main layout: Левый блок (меню) | Правый блок (интерфейс пользователя VIKI) */}
+      <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-[260px,1fr] gap-6">
+        {/* Sidebar — отдельный блок меню */}
+        <aside className="lg:sticky lg:top-[68px] h-max">
+          <div className="mb-2 text-xs uppercase tracking-wide text-slate-500">Меню</div>
+          <nav className="rounded-2xl border border-slate-800 bg-slate-900/70 p-2">
+            {NAV.map((n)=> (
+              <button key={n.id} onClick={()=>setTab(n.id)} className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm hover:bg-slate-800 transition-colors ${tab===n.id?"bg-indigo-600/90 text-white hover:bg-indigo-600/90 shadow-inner": "text-slate-200"}`}>
+                <Icon name={n.icon} className="w-4 h-4"/>
+                {n.label}
+              </button>
+            ))}
+          </nav>
+          <div className="mt-3 p-3 rounded-2xl border border-slate-800 bg-slate-900/70 text-xs text-slate-400">
+            <div className="font-semibold text-slate-200 mb-1">Активный проект</div>
+            <div>{currentProject?.name}</div>
+            <div className="mt-1">Контактная база: <span className="font-mono text-slate-300">{currentProject?.activeContactBaseId}</span></div>
+            <div className="mt-1">Статус: <Badge color={currentProject?.status === "active"?"green":"yellow"}>{currentProject?.status}</Badge></div>
+          </div>
+        </aside>
 
-    // Ensure all CTA anchors with "#" get Telegram link (safety net)
-    document.querySelectorAll('a.btn').forEach(a=>{
-      if(a.getAttribute('href')==='#'){
-        a.setAttribute('href','https://t.me/VIKI_SUPPORT');
-        a.setAttribute('target','_blank');
-        a.setAttribute('rel','noopener');
-      }
-    });
-  </script>
-</body>
-</html>
+        {/* Content — отдельный блок «Интерфейс пользователя VIKI» */}
+        <main className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-semibold">{NAV.find(n=>n.id===tab)?.label}</h1>
+              <p className="text-sm text-slate-400">Интерфейс пользователя VIKI</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm">Экспорт</Button>
+              <Button size="sm" onClick={()=>setWizard(true)}>+ Проект</Button>
+            </div>
+          </div>
+          <Content />
+        </main>
+      </div>
+
+      {/* Wizard */}
+      <ProjectWizard open={wizard} onClose={()=>setWizard(false)} onCreate={handleCreateProject} agents={agents} contactBases={contactBases} />
+
+      {/* Footer */}
+      <footer className="mt-10 border-t border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 py-6 text-xs text-slate-500 flex items-center justify-between">
+          <div>© {new Date().getFullYear()} VIKI.ai — Все права защищены</div>
+          <div className="flex items-center gap-2">
+            <Badge>Antiban</Badge>
+            <Badge>Throttle</Badge>
+            <Badge>Fallback</Badge>
+            <Badge>Audit</Badge>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
